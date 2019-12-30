@@ -1,0 +1,6 @@
+[submodule "cJSON"]
+	path = cJSON
+	url = https://github.com/DaveGamble/cJSON
+[submodule "curl"]
+	path = curl
+	url = https://github.com/curl/curl
