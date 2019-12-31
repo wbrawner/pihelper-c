@@ -1,5 +1,6 @@
 #include <getopt.h>
-#include "config.h"
+
+static char * shortopts = "cd:ef:hqv";
 
 static struct option longopts[] = {
         { "configure",  no_argument,            NULL,           'c' },
@@ -12,6 +13,4 @@ static struct option longopts[] = {
 };
 
 void print_usage();
-
-pihole_config * configure_pihole(char * config_path);
 

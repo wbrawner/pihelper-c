@@ -12,9 +12,7 @@ static char * AUTH_QUERY = "auth";
 static char * ENABLE_QUERY = "enable";
 static char * DISABLE_QUERY = "disable";
 static char * HTTP_SCHEME = "http://";
-static int HTTP_SCHEME_LEN = 8;
 static char * HTTPS_SCHEME = "https://";
-static int HTTPS_SCHEME_LEN = 9;
 
 int get_status(pihole_config * config) {
     char * formatted_host = prepend_scheme(config->host);
@@ -89,15 +87,17 @@ static char * get(char endpoint[]) {
     }
 }
 
-/*
+/**
  * Given a potentially unformatted host (missing scheme), prepends the scheme (http://) to the host. Note
  * that the caller is responsible for freeing the memory allocated by this method.
- * @return a pointer to the host with the scheme prepended
+ * @return a pointer to the host with the scheme prepended, or the given pointer if the host is already
+ * properly formatted.
  */
 static char * prepend_scheme(char * raw_host) {
+    if (raw_host == NULL) return NULL;
     char * formatted_host;
-    if (strnstr(raw_host, HTTP_SCHEME, HTTP_SCHEME_LEN) == NULL
-            && strnstr(raw_host, HTTPS_SCHEME, HTTPS_SCHEME_LEN) == NULL) {
+    if (strstr(raw_host, HTTP_SCHEME) != raw_host
+            && strstr(raw_host, HTTPS_SCHEME) != raw_host) {
         formatted_host = malloc(URL_FORMAT_LEN + strlen(raw_host));
         sprintf(formatted_host, URL_FORMAT, raw_host);
     } else {

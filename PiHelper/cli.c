@@ -2,18 +2,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "cli.h"
-#include "log.h"
-#include "network.h"
 #include "pihelper.h"
 
 int main(int argc, char ** argv) {
 
     bool configure, enable;
-    char * disable;
+    char * disable = NULL;
     char * config_path;
     char ch;
-    while ((ch = getopt_long(argc, argv, "cd:ef:hv", longopts, NULL)) != -1) {
+    while ((ch = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1) {
         switch(ch) {
             case 'c':
                 configure = true;
@@ -90,16 +89,16 @@ int main(int argc, char ** argv) {
     }
 
     if (config == NULL) {
-        printf("Failed to parse Pi-Helper config\n");
+        write_log(PIHELPER_LOG_ERROR, "Failed to parse Pi-Helper config at %s", config_path);
         exit(1);
     }
 
-    if (enable && disable != 0) {
+    if (enable && disable != NULL) {
         print_usage();
         return PIHELPER_INVALID_COMMANDS;
     } else if (enable) {
         return enable_pihole(config);
-    } else if (disable != 0) {
+    } else if (disable != NULL) {
         return disable_pihole(config, disable);
     } else {
         return get_status(config);
