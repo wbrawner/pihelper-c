@@ -25,7 +25,6 @@ int main(int argc, char ** argv) {
                 } else {
                     disable = "";
                 }
-                write_log(LOG_DEBUG, "Disabling pi-hole for %s seconds", disable);
                 break;
             case 'e':
                 enable = true;
@@ -41,7 +40,6 @@ int main(int argc, char ** argv) {
                     config_path[strlen(cwd)] = '/';
                     strncpy(&(config_path[strlen(cwd) + 1]), optarg, strlen(optarg));
                     config_path[full_path_len] = '\0';
-                    write_log(LOG_DEBUG, "Fixed config_path: %s", config_path);
                 } else {
                     // This is an absolute path, copy as-is
                     config_path = malloc(strlen(optarg) + 1);
@@ -49,9 +47,11 @@ int main(int argc, char ** argv) {
                     config_path[strlen(optarg)] = '\0';
                 }
                 break;
+            case 'q':
+                pihelper_set_log_level(PIHELPER_LOG_DISABLED);
+                break;
             case 'v':
-                // TODO: Add log level and set here
-                //PIHELPER_DEBUG = true;
+                pihelper_set_log_level(PIHELPER_LOG_DEBUG);
                 break;
             case 'h':
             default:
@@ -69,6 +69,7 @@ int main(int argc, char ** argv) {
     FILE * config_file = fopen(config_path, "r+");
     if (config_file == NULL) {
         char * user_input = malloc(2);
+        // Intentionally using printf here to ensure that this is always printed
         printf("No Pi-Helper configuration found. Would you like to create it now? [Y/n] ");
         fgets(user_input, 2, stdin);
         if (strstr(user_input, "\n") == user_input
@@ -79,6 +80,8 @@ int main(int argc, char ** argv) {
         } else {
             return 1;
         }
+    } else {
+        write_log(PIHELPER_LOG_DEBUG, "Using config file at: %s", config_path);
     }
 
     pihole_config * config;

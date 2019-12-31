@@ -5,8 +5,14 @@
 #include <string.h>
 #include "log.h"
 
+int LOG_LEVEL = 2; // Default to info logs
+
+void set_log_level(int level) {
+    LOG_LEVEL = level;
+}
+
 void write_log(int level, char * format, ...) {
-    if (level == LOG_DEBUG) return;
+    if (level > LOG_LEVEL) return;
     va_list args;
     va_start(args, format);
     int format_len = strlen(format);
@@ -14,7 +20,8 @@ void write_log(int level, char * format, ...) {
     memcpy(new_format, format, format_len);
     new_format[format_len] = '\n';
     new_format[format_len + 1] = '\0';
-    vprintf(new_format, args);
+    FILE *stream = level < PIHELPER_LOG_INFO ? stderr : stdout;
+    vfprintf(stream, new_format, args);
     va_end(args);
 }
 

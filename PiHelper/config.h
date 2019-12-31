@@ -1,6 +1,7 @@
 #ifndef PIHELPER_CONFIG
 #define PIHELPER_CONFIG
 #include <openssl/sha.h>
+#include "log.h"
 
 static char * DEFAULT_CONFIG_PATH = "/.config/pihelper.conf";
 

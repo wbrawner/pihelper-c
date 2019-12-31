@@ -54,7 +54,7 @@ static char * hash_string (char * raw_string) {
 
 pihole_config * read_config(char * config_path) {
     if (access(config_path, F_OK)) {
-        printf("ERROR: The specified config file doesn't exist\n");
+        write_log(PIHELPER_LOG_ERROR, "The specified config file doesn't exist: %s", config_path);
         return NULL;
     }
 
@@ -62,8 +62,9 @@ pihole_config * read_config(char * config_path) {
     FILE * config_file = fopen(config_path, "r");
     char host[_POSIX_HOST_NAME_MAX + 7];
     fgets(host, _POSIX_HOST_NAME_MAX + 7, config_file);
-    if (strstr(host, "host=") == NULL) {
-        printf("Invalid config file\n");
+    if (strstr(host, "host=") == NULL || strlen(host) < 7) {
+        write_log(PIHELPER_LOG_DEBUG, "Config file contains invalid host: %s", host);
+        write_log(PIHELPER_LOG_ERROR, "Invalid config file");
         exit(1);
     }
     config->host = calloc(1, strlen(host) - 7);
@@ -71,7 +72,8 @@ pihole_config * read_config(char * config_path) {
     char api_key[74];
     fgets(api_key, 74, config_file);
     if (strstr(api_key, "api-key=") == NULL) {
-        printf("Invalid config file\n");
+        write_log(PIHELPER_LOG_DEBUG, "Config file contains invalid api key: %s", api_key);
+        write_log(PIHELPER_LOG_ERROR, "Invalid config file");
         exit(1);
     }
     config->api_key = calloc(1, strlen(api_key) - 8);
@@ -83,11 +85,12 @@ pihole_config * read_config(char * config_path) {
 pihole_config * configure_pihole(char * config_path) {
     if (access(config_path, F_OK) == 0) {
         // TODO: Check if file is accessible for read/write (not just if it exists)
-        printf("WARNING: The config file already exists. Continuing will overwrite any existing configuration.\n");
+        write_log(PIHELPER_LOG_WARN, "WARNING: The config file already exists. Continuing will overwrite any existing configuration.\n");
     }
     pihole_config * config = malloc(sizeof(pihole_config));
     config->host = calloc(1, _POSIX_HOST_NAME_MAX);
     config->host[_POSIX_HOST_NAME_MAX] = '\0';
+    // Intentionally using printf to ensure this is always printed
     printf("Enter the hostname or ip address for your pi-hole: ");
     fgets(config->host, _POSIX_HOST_NAME_MAX, stdin);
     char * newline = strstr(config->host, "\n");

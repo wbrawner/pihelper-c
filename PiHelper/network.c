@@ -17,9 +17,11 @@ static char * HTTP_SCHEME = "http://";
 static char * HTTPS_SCHEME = "https://";
 
 int get_status(pihole_config * config) {
+    write_log(PIHELPER_LOG_DEBUG, "Getting Pi-hole status…");
     char * formatted_host = prepend_scheme(config->host);
     char * response = get(formatted_host);
     if (response == NULL) {
+        write_log(PIHELPER_LOG_ERROR, "Failed to retrieve status for Pi-hole at %s\n", config->host);
         return 1;
     } else {
         parse_status(response);
@@ -29,6 +31,7 @@ int get_status(pihole_config * config) {
 }
 
 int enable_pihole(pihole_config * config) {
+    write_log(PIHELPER_LOG_DEBUG, "Enabling Pi-hole…");
     char * formatted_host = prepend_scheme(config->host);
     append_query_parameter(&formatted_host, AUTH_QUERY, config->api_key);
     append_query_parameter(&formatted_host, ENABLE_QUERY, NULL);
@@ -43,6 +46,11 @@ int enable_pihole(pihole_config * config) {
 }
 
 int disable_pihole(pihole_config * config, char * duration) {
+    if (*duration == '\0') {
+        write_log(PIHELPER_LOG_DEBUG, "Disabling Pi-hole permanently…");
+    } else {
+        write_log(PIHELPER_LOG_DEBUG, "Disabling Pi-hole for %s seconds…", duration);
+    }
     char * formatted_host = prepend_scheme(config->host);
     append_query_parameter(&formatted_host, AUTH_QUERY, config->api_key);
     append_query_parameter(&formatted_host, DISABLE_QUERY, duration);
@@ -56,8 +64,7 @@ int disable_pihole(pihole_config * config, char * duration) {
     }
 }
 
-
-/*
+/**
  * Used to handle curl data callbacks
  */
 static size_t receive_data(char *ptr, size_t size, size_t nmemb, void *userdata) {
@@ -71,6 +78,9 @@ static size_t receive_data(char *ptr, size_t size, size_t nmemb, void *userdata)
     return realsize;
 }
 
+/**
+ * Used to make a GET request to a given endpoint
+ */
 static char * get(char endpoint[]) {
     http_response response;
     response.body = malloc(1);
@@ -119,7 +129,7 @@ static void parse_status(char * raw_json) {
         jobj = json_tokener_parse_ex(tok, raw_json, stringlen);
     } while ((jerr = json_tokener_get_error(tok)) == json_tokener_continue);
     if (jerr != json_tokener_success) {
-        write_log(LOG_ERROR, "Failed to parse JSON: %s", json_tokener_error_desc(jerr));
+        write_log(PIHELPER_LOG_ERROR, "Failed to parse JSON: %s", json_tokener_error_desc(jerr));
         return;
     }
     json_object *status = json_object_new_object();
@@ -128,7 +138,7 @@ static void parse_status(char * raw_json) {
             && (status_string = json_object_get_string(status)) != NULL) {
         printf("Pi-hole status: %s\n", status_string);
     } else {
-        write_log(LOG_DEBUG, "Unable to parse response: %s", raw_json);
+        write_log(PIHELPER_LOG_DEBUG, "Unable to parse response: %s", raw_json);
     }
     json_tokener_free(tok);
     json_object_put(jobj);
