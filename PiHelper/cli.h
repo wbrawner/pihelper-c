@@ -18,7 +18,7 @@
  */
 #include <getopt.h>
 
-static char * shortopts = "cd:ef:hqv";
+static char * shortopts = "cd::ef:hqv";
 
 static struct option longopts[] = {
         { "configure",  no_argument,            NULL,           'c' },

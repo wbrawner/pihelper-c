@@ -33,3 +33,8 @@ int pihelper_disable_pihole(pihole_config * config, char * duration) {
 void pihelper_set_log_level(int level) {
     set_log_level(level);
 }
+
+void pihelper_free_config(pihole_config * config) {
+    free_config(config);
+}
+

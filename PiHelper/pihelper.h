@@ -32,5 +32,7 @@ int pihelper_get_status(pihole_config * config);
 int pihelper_enable_pihole(pihole_config * config);
 
 int pihelper_disable_pihole(pihole_config * config, char * duration);
+
+void pihelper_free_config(pihole_config * config);
 #endif
 

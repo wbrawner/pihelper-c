@@ -83,20 +83,29 @@ pihole_config * read_config(char * config_path) {
     if (strstr(host, "host=") == NULL || strlen(host) < 7) {
         write_log(PIHELPER_LOG_DEBUG, "Config file contains invalid host: %s", host);
         write_log(PIHELPER_LOG_ERROR, "Invalid config file");
-        exit(1);
+        free_config(config);
+        fclose(config_file);
+        return NULL;
     }
-    config->host = calloc(1, strlen(host) - 7);
+    config->host = calloc(1, strlen(host) - 5);
     strncpy(config->host, host + 5, strlen(host) - 6);
-    char api_key[74];
+    config->host[strlen(host) - 6] = '\0';
+    char * api_key = calloc(1, 74);
     fgets(api_key, 74, config_file);
-    if (strstr(api_key, "api-key=") == NULL) {
+    if (strstr(api_key, "api-key=") == NULL
+            || strlen(api_key) < 9) {
         write_log(PIHELPER_LOG_DEBUG, "Config file contains invalid api key: %s", api_key);
-        write_log(PIHELPER_LOG_ERROR, "Invalid config file");
-        exit(1);
+        write_log(PIHELPER_LOG_WARN, "The config file is missing a valid API key. Authenticated operations won't work.");
+        free(api_key);
+        fclose(config_file);
+        return config;
     }
     config->api_key = calloc(1, strlen(api_key) - 8);
     strncpy(config->api_key, api_key + 8, strlen(api_key) - 9);
+    config->api_key[strlen(api_key) - 9] = '\0';
+    free(api_key);
     fclose(config_file);
+    write_log(PIHELPER_LOG_DEBUG, "Using host %s and api key %s", config->host, config->api_key);
     return config;
 }
 
@@ -107,7 +116,7 @@ pihole_config * configure_pihole(char * config_path) {
     }
     pihole_config * config = malloc(sizeof(pihole_config));
     config->host = calloc(1, _POSIX_HOST_NAME_MAX);
-    config->host[_POSIX_HOST_NAME_MAX] = '\0';
+    config->host[_POSIX_HOST_NAME_MAX - 1] = '\0';
     // Intentionally using printf to ensure this is always printed
     printf("Enter the hostname or ip address for your pi-hole: ");
     fgets(config->host, _POSIX_HOST_NAME_MAX, stdin);
@@ -116,16 +125,28 @@ pihole_config * configure_pihole(char * config_path) {
         config->host[strlen(config->host) - strlen(newline)] = '\0';
     }
     config->api_key = getpass("Enter the api key or web password for your pi-hole: ");
-    if (strlen(config->api_key) < 64) {
+    if (strlen(config->api_key) != 64) {
         // This is definitely not an API key, so hash it
         // The Pi-hole hashes twice so we do the same here
         char * first = hash_string(config->api_key);
         char * hash = hash_string(first);
         free(first);
+        free(config->api_key);
         config->api_key = hash;
     }
     // TODO: Make an authenticated request to verify that the credentials are valid and save the config
     save_config(config, config_path);
     return config;
+}
+
+void free_config(pihole_config * config) {
+    if (config == NULL) return;
+    if (config->host != NULL) {
+        free(config->host);
+    }
+    if (config->api_key != NULL) {
+        free(config->api_key);
+    }
+    free(config);
 }
 

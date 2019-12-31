@@ -34,12 +34,13 @@ void write_log(int level, char * format, ...) {
     va_list args;
     va_start(args, format);
     int format_len = strlen(format);
-    char * new_format = malloc(format_len + 1);
+    char * new_format = malloc(format_len + 2);
     memcpy(new_format, format, format_len);
     new_format[format_len] = '\n';
     new_format[format_len + 1] = '\0';
     FILE *stream = level < PIHELPER_LOG_INFO ? stderr : stdout;
     vfprintf(stream, new_format, args);
     va_end(args);
+    free(new_format);
 }
 

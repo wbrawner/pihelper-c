@@ -38,6 +38,7 @@ int get_status(pihole_config * config) {
     write_log(PIHELPER_LOG_DEBUG, "Getting Pi-hole status…");
     char * formatted_host = prepend_scheme(config->host);
     char * response = get(formatted_host);
+    free(formatted_host);
     if (response == NULL) {
         write_log(PIHELPER_LOG_ERROR, "Failed to retrieve status for Pi-hole at %s\n", config->host);
         return 1;
@@ -54,6 +55,7 @@ int enable_pihole(pihole_config * config) {
     append_query_parameter(&formatted_host, AUTH_QUERY, config->api_key);
     append_query_parameter(&formatted_host, ENABLE_QUERY, NULL);
     char * response = get(formatted_host);
+    free(formatted_host);
     if (response == NULL) {
         return 1;
     } else {
@@ -73,6 +75,7 @@ int disable_pihole(pihole_config * config, char * duration) {
     append_query_parameter(&formatted_host, AUTH_QUERY, config->api_key);
     append_query_parameter(&formatted_host, DISABLE_QUERY, duration);
     char * response = get(formatted_host);
+    free(formatted_host);
     if (response == NULL) {
         return 1;
     } else {
@@ -150,7 +153,7 @@ static void parse_status(char * raw_json) {
         write_log(PIHELPER_LOG_ERROR, "Failed to parse JSON: %s", json_tokener_error_desc(jerr));
         return;
     }
-    json_object *status = json_object_new_object();
+    json_object *status;
     const char * status_string;
     if (json_pointer_get(jobj, "/status", &status) == 0
             && (status_string = json_object_get_string(status)) != NULL) {

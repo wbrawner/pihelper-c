@@ -26,9 +26,9 @@
 
 int main(int argc, char ** argv) {
 
-    bool configure, enable;
+    bool configure = false, enable = false;
     char * disable = NULL;
-    char * config_path;
+    char * config_path = NULL;
     char ch;
     while ((ch = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1) {
         switch(ch) {
@@ -41,7 +41,8 @@ int main(int argc, char ** argv) {
                     strncpy(disable, optarg, strlen(optarg));
                     disable[strlen(optarg)] = '\0';
                 } else {
-                    disable = "";
+                    disable = malloc(1);
+                    disable[0] = '\0';
                 }
                 break;
             case 'e':
@@ -57,7 +58,8 @@ int main(int argc, char ** argv) {
                     strncpy(config_path, cwd, strlen(cwd));
                     config_path[strlen(cwd)] = '/';
                     strncpy(&(config_path[strlen(cwd) + 1]), optarg, strlen(optarg));
-                    config_path[full_path_len] = '\0';
+                    config_path[full_path_len - 1] = '\0';
+                    free(cwd);
                 } else {
                     // This is an absolute path, copy as-is
                     config_path = malloc(strlen(optarg) + 1);
@@ -82,10 +84,9 @@ int main(int argc, char ** argv) {
         int path_len = strlen(home_dir) + strlen(DEFAULT_CONFIG_PATH);
         config_path = malloc(path_len + 1);
         sprintf(config_path, "%s%s", home_dir, DEFAULT_CONFIG_PATH);
-        config_path[path_len + 1] = '\0';
+        config_path[path_len] = '\0';
     }
-    FILE * config_file = fopen(config_path, "r+");
-    if (config_file == NULL) {
+    if (access(config_path, F_OK)) {
         char * user_input = malloc(2);
         // Intentionally using printf here to ensure that this is always printed
         printf("No Pi-Helper configuration found. Would you like to create it now? [Y/n] ");
@@ -95,7 +96,10 @@ int main(int argc, char ** argv) {
                 || strstr(user_input, "y") == user_input
            ) {
             configure = true;
+            free(user_input);
         } else {
+            free(config_path);
+            free(user_input);
             return 1;
         }
     } else {
@@ -108,22 +112,25 @@ int main(int argc, char ** argv) {
     } else {
         config = read_config(config_path);
     }
-
+    int retval;
     if (config == NULL) {
         write_log(PIHELPER_LOG_ERROR, "Failed to parse Pi-Helper config at %s", config_path);
-        exit(1);
+        retval = 1;
+    } else if (enable && disable != NULL) {
+        print_usage();
+        retval =  PIHELPER_INVALID_COMMANDS;
+    } else if (enable) {
+        retval = enable_pihole(config);
+    } else if (disable != NULL) {
+        retval =  disable_pihole(config, disable);
+        free(disable);
+    } else {
+        retval = get_status(config);
     }
 
-    if (enable && disable != NULL) {
-        print_usage();
-        return PIHELPER_INVALID_COMMANDS;
-    } else if (enable) {
-        return enable_pihole(config);
-    } else if (disable != NULL) {
-        return disable_pihole(config, disable);
-    } else {
-        return get_status(config);
-    }
+    free(config_path);
+    pihelper_free_config(config);
+    return retval;
 }
 
 void print_usage() {
