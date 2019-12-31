@@ -1,7 +1,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <curl/curl.h>
-#include <cjson/cJSON.h>
+#include <json-c/json_object.h>
+#include <json-c/json_tokener.h>
+#include <json-c/json_pointer.h>
 #include "config.h"
 #include "log.h"
 #include "network.h"
@@ -108,14 +110,28 @@ static char * prepend_scheme(char * raw_host) {
 }
 
 static void parse_status(char * raw_json) {
-    cJSON *json = cJSON_Parse(raw_json);
-    cJSON *status = cJSON_GetObjectItemCaseSensitive(json, "status");
-    if (cJSON_IsString(status) && (status->valuestring != NULL)) {
-        printf("Pi-hole status: %s\n", status->valuestring);
+    json_tokener *tok = json_tokener_new();
+    json_object *jobj = NULL;
+    int stringlen = 0;
+    enum json_tokener_error jerr;
+    do {
+        stringlen = strlen(raw_json);
+        jobj = json_tokener_parse_ex(tok, raw_json, stringlen);
+    } while ((jerr = json_tokener_get_error(tok)) == json_tokener_continue);
+    if (jerr != json_tokener_success) {
+        write_log(LOG_ERROR, "Failed to parse JSON: %s", json_tokener_error_desc(jerr));
+        return;
+    }
+    json_object *status = json_object_new_object();
+    const char * status_string;
+    if (json_pointer_get(jobj, "/status", &status) == 0
+            && (status_string = json_object_get_string(status)) != NULL) {
+        printf("Pi-hole status: %s\n", status_string);
     } else {
         write_log(LOG_DEBUG, "Unable to parse response: %s", raw_json);
     }
-    cJSON_Delete(json);
+    json_tokener_free(tok);
+    json_object_put(jobj);
 }
 
 static void append_query_parameter(char ** host, char * key, char * value) {
