@@ -25,8 +25,6 @@
 #include <unistd.h>
 #include "config.h"
 
-const int MAX_PIHOLE_API_KEY = 64;
-
 int mkdirs(char * path) {
     char * curPos = strstr(path, "/") + 1;
     char parents[strlen(path)];

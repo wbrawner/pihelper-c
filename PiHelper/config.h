@@ -22,6 +22,8 @@
 #include "log.h"
 #include "pihelper.h"
 
+#define MAX_PIHOLE_API_KEY 64
+
 int save_config(pihole_config * config, char * config_path);
 
 pihole_config * read_config(char * config_path);

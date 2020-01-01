@@ -78,7 +78,7 @@ int main(int argc, char ** argv) {
             case 'h':
             default:
                 print_usage();
-                return PIHELPER_HELP;
+                return PIHELPER_OPERATION_FAILED;
         }
     }
     if (config_path == NULL) {
@@ -118,25 +118,35 @@ int main(int argc, char ** argv) {
         write_log(PIHELPER_LOG_DEBUG, "Reading existing PiHelper config");
         config = pihelper_read_config(config_path);
     }
-    int retval;
+    int status;
     if (config == NULL) {
         write_log(PIHELPER_LOG_ERROR, "Failed to parse Pi-Helper config at %s", config_path);
-        retval = 1;
+        status = PIHELPER_OPERATION_FAILED;
     } else if (enable && disable != NULL) {
         print_usage();
-        retval = PIHELPER_INVALID_COMMANDS;
+        status = PIHELPER_OPERATION_FAILED;
     } else if (enable) {
-        retval = pihelper_enable_pihole(config);
+        status = pihelper_enable_pihole(config);
     } else if (disable != NULL) {
-        retval = pihelper_disable_pihole(config, disable);
+        status = pihelper_disable_pihole(config, disable);
         free(disable);
     } else {
-        retval = pihelper_get_status(config);
+        status = pihelper_get_status(config);
     }
 
+    char * status_message = NULL;
+    if (status == PIHELPER_ENABLED) {
+        status_message = "enabled";
+    } else if (status == PIHELPER_DISABLED) {
+        status_message = "disabled";
+    }
+
+    if (status_message != NULL) {
+        write_log(PIHELPER_LOG_INFO, "Pi-hole status: %s", status_message);
+    }
     free(config_path);
     pihelper_free_config(config);
-    return retval;
+    return status;
 }
 
 void print_usage() {

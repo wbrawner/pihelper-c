@@ -19,6 +19,14 @@
 #ifndef PIHELPER_NETWORK
 #define PIHELPER_NETWORK
 
+#define URL_FORMAT     "http://%s/admin/api.php"
+#define URL_FORMAT_LEN 22
+#define AUTH_QUERY     "auth"
+#define ENABLE_QUERY   "enable"
+#define DISABLE_QUERY  "disable"
+#define HTTP_SCHEME    "http://"
+#define HTTPS_SCHEME   "https://"
+
 typedef struct {
     size_t size;
     char * body;
@@ -51,7 +59,7 @@ int disable_pihole(pihole_config * config, char * duration);
 
 static char * get(char endpoint[]);
 
-static void parse_status(char * raw_json);
+static int parse_status(char * raw_json);
 
 static void append_query_parameter(char ** host, char * key, char * value);
 

@@ -26,14 +26,6 @@
 #include "log.h"
 #include "network.h"
 
-static char * URL_FORMAT     = "http://%s/admin/api.php";
-static int    URL_FORMAT_LEN = 22;
-static char * AUTH_QUERY     = "auth";
-static char * ENABLE_QUERY   = "enable";
-static char * DISABLE_QUERY  = "disable";
-static char * HTTP_SCHEME    = "http://";
-static char * HTTPS_SCHEME   = "https://";
-
 int get_status(pihole_config * config) {
     write_log(PIHELPER_LOG_DEBUG, "Getting Pi-hole status…");
     char * formatted_host = prepend_scheme(config->host);
@@ -41,11 +33,11 @@ int get_status(pihole_config * config) {
     free(formatted_host);
     if (response == NULL) {
         write_log(PIHELPER_LOG_ERROR, "Failed to retrieve status for Pi-hole at %s\n", config->host);
-        return 1;
+        return PIHELPER_OPERATION_FAILED;
     } else {
-        parse_status(response);
+        int status = parse_status(response);
         free(response);
-        return 0;
+        return status;
     }
 }
 
@@ -57,11 +49,11 @@ int enable_pihole(pihole_config * config) {
     char * response = get(formatted_host);
     free(formatted_host);
     if (response == NULL) {
-        return 1;
+        return PIHELPER_OPERATION_FAILED;
     } else {
-        parse_status(response);
+        int status = parse_status(response);
         free(response);
-        return 0;
+        return status;
     }
 }
 
@@ -77,11 +69,11 @@ int disable_pihole(pihole_config * config, char * duration) {
     char * response = get(formatted_host);
     free(formatted_host);
     if (response == NULL) {
-        return 1;
+        return PIHELPER_OPERATION_FAILED;
     } else {
-        parse_status(response);
+        int status = parse_status(response);
         free(response);
-        return 0;
+        return status;
     }
 }
 
@@ -145,10 +137,11 @@ static char * prepend_scheme(char * raw_host) {
     return formatted_host;
 }
 
-static void parse_status(char * raw_json) {
+static int parse_status(char * raw_json) {
     json_tokener *tok = json_tokener_new();
     json_object *jobj = NULL;
     int stringlen = 0;
+    int retval = PIHELPER_OPERATION_FAILED;
     enum json_tokener_error jerr;
     do {
         stringlen = strlen(raw_json);
@@ -157,19 +150,24 @@ static void parse_status(char * raw_json) {
     if (jerr != json_tokener_success) {
         write_log(PIHELPER_LOG_ERROR, "Failed to parse JSON: %s", json_tokener_error_desc(jerr));
         json_tokener_free(tok);
-        return;
+        return retval;
     }
     write_log(PIHELPER_LOG_DEBUG, "%s", json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PRETTY));
     json_object *status;
     const char * status_string;
     if (json_pointer_get(jobj, "/status", &status) == 0
             && (status_string = json_object_get_string(status)) != NULL) {
-        printf("Pi-hole status: %s\n", status_string);
+        if (strstr(status_string, "enabled") == status_string) {
+            retval = PIHELPER_ENABLED;
+        } else if (strstr(status_string, "disabled") == status_string) {
+            retval = PIHELPER_DISABLED;
+        }
     } else {
         write_log(PIHELPER_LOG_DEBUG, "Unable to parse response: %s", raw_json);
     }
     json_tokener_free(tok);
     json_object_put(jobj);
+    return retval;
 }
 
 static void append_query_parameter(char ** host, char * key, char * value) {
