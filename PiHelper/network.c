@@ -26,13 +26,13 @@
 #include "log.h"
 #include "network.h"
 
-static char * URL_FORMAT = "http://%s/admin/api.php";
-static int URL_FORMAT_LEN = 22;
-static char * AUTH_QUERY = "auth";
-static char * ENABLE_QUERY = "enable";
-static char * DISABLE_QUERY = "disable";
-static char * HTTP_SCHEME = "http://";
-static char * HTTPS_SCHEME = "https://";
+static char * URL_FORMAT     = "http://%s/admin/api.php";
+static int    URL_FORMAT_LEN = 22;
+static char * AUTH_QUERY     = "auth";
+static char * ENABLE_QUERY   = "enable";
+static char * DISABLE_QUERY  = "disable";
+static char * HTTP_SCHEME    = "http://";
+static char * HTTPS_SCHEME   = "https://";
 
 int get_status(pihole_config * config) {
     write_log(PIHELPER_LOG_DEBUG, "Getting Pi-hole status…");
@@ -111,11 +111,16 @@ static char * get(char endpoint[]) {
     curl_easy_setopt(curl, CURLOPT_URL, endpoint);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, receive_data);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10);
+    if (LOG_LEVEL == PIHELPER_LOG_DEBUG) {
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
+    }
     int res = curl_easy_perform(curl);
     curl_easy_cleanup(curl);
     if (res == CURLE_OK) {
         return response.body;
     } else {
+        free(response.body);
         return NULL;
     }
 }
@@ -151,8 +156,10 @@ static void parse_status(char * raw_json) {
     } while ((jerr = json_tokener_get_error(tok)) == json_tokener_continue);
     if (jerr != json_tokener_success) {
         write_log(PIHELPER_LOG_ERROR, "Failed to parse JSON: %s", json_tokener_error_desc(jerr));
+        json_tokener_free(tok);
         return;
     }
+    write_log(PIHELPER_LOG_DEBUG, "%s", json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PRETTY));
     json_object *status;
     const char * status_string;
     if (json_pointer_get(jobj, "/status", &status) == 0

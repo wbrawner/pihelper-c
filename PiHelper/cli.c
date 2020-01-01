@@ -22,7 +22,9 @@
 #include <string.h>
 #include <unistd.h>
 #include "cli.h"
-#include "pihelper.h"
+#include "log.h"
+
+static char * DEFAULT_CONFIG_PATH = "/.config/pihelper.conf";
 
 int main(int argc, char ** argv) {
 
@@ -87,10 +89,12 @@ int main(int argc, char ** argv) {
         config_path[path_len] = '\0';
     }
     if (access(config_path, F_OK)) {
-        char * user_input = malloc(2);
+        char * user_input = malloc(4);
         // Intentionally using printf here to ensure that this is always printed
         printf("No Pi-Helper configuration found. Would you like to create it now? [Y/n] ");
-        fgets(user_input, 2, stdin);
+        fgets(user_input, 3, stdin);
+        user_input[3] = '\0';
+        write_log(PIHELPER_LOG_DEBUG, "User's input: %s", user_input);
         if (strstr(user_input, "\n") == user_input
                 || strstr(user_input, "Y") == user_input
                 || strstr(user_input, "y") == user_input
@@ -108,9 +112,11 @@ int main(int argc, char ** argv) {
 
     pihole_config * config;
     if (configure) {
+        write_log(PIHELPER_LOG_DEBUG, "Configuring PiHelper");
         config = configure_pihole(config_path);
     } else {
-        config = read_config(config_path);
+        write_log(PIHELPER_LOG_DEBUG, "Reading existing PiHelper config");
+        config = pihelper_read_config(config_path);
     }
     int retval;
     if (config == NULL) {
@@ -118,14 +124,14 @@ int main(int argc, char ** argv) {
         retval = 1;
     } else if (enable && disable != NULL) {
         print_usage();
-        retval =  PIHELPER_INVALID_COMMANDS;
+        retval = PIHELPER_INVALID_COMMANDS;
     } else if (enable) {
-        retval = enable_pihole(config);
+        retval = pihelper_enable_pihole(config);
     } else if (disable != NULL) {
-        retval =  disable_pihole(config, disable);
+        retval = pihelper_disable_pihole(config, disable);
         free(disable);
     } else {
-        retval = get_status(config);
+        retval = pihelper_get_status(config);
     }
 
     free(config_path);
@@ -142,5 +148,30 @@ void print_usage() {
     printf(" -h, --help                   Display this message\n");
     printf(" -q, --quiet                  Don't print anything\n");
     printf(" -v, --verbose                Print debug logs\n");
+}
+
+pihole_config * configure_pihole(char * config_path) {
+    if (access(config_path, F_OK) == 0) {
+        // TODO: Check if file is accessible for read/write (not just if it exists)
+        write_log(PIHELPER_LOG_WARN, "WARNING: The config file already exists. Continuing will overwrite any existing configuration.\n");
+    }
+    pihole_config * config = pihelper_new_config();
+    printf("Enter the hostname or ip address for your pi-hole: ");
+    char * host = calloc(1, 257);
+    fgets(host, 256, stdin);
+    host[256] = '\0';
+    write_log(PIHELPER_LOG_DEBUG, "User entered \"%s\" for host", host);
+    pihelper_config_set_host(config, host);
+    free(host);
+    char * raw_pass = getpass("Enter the api key or web password for your pi-hole: ");
+    if (strlen(raw_pass) != 64) {
+        pihelper_config_set_password(config, raw_pass);
+    } else {
+        pihelper_config_set_api_key(config, raw_pass);
+    }
+    free(raw_pass);
+    // TODO: Make an authenticated request to verify that the credentials are valid and save the config
+    pihelper_save_config(config, config_path);
+    return config;
 }
 

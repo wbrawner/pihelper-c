@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "log.h"
+#include "pihelper.h"
 
 int LOG_LEVEL = 2; // Default to info logs
 

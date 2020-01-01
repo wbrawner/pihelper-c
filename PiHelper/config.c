@@ -25,6 +25,8 @@
 #include <unistd.h>
 #include "config.h"
 
+const int MAX_PIHOLE_API_KEY = 64;
+
 int mkdirs(char * path) {
     char * curPos = strstr(path, "/") + 1;
     char parents[strlen(path)];
@@ -41,10 +43,10 @@ int mkdirs(char * path) {
     return retval;
 }
 
-void save_config(pihole_config * config, char * config_path) {
+int save_config(pihole_config * config, char * config_path) {
     if (mkdirs(config_path)) {
         perror(config_path);
-        exit(1);
+        return 1;
     }
     FILE * config_file = fopen(config_path, "w");
     int config_len = strlen(config->host) + strlen(config->api_key) + 16;
@@ -53,6 +55,7 @@ void save_config(pihole_config * config, char * config_path) {
     config_string[config_len + 1] = '\0';
     fputs(config_string, config_file);
     fclose(config_file);
+    return 0;
 }
 
 /*
@@ -61,12 +64,12 @@ void save_config(pihole_config * config, char * config_path) {
 static char * hash_string (char * raw_string) {
     unsigned char bytes[SHA256_DIGEST_LENGTH];
     SHA256((unsigned char *) raw_string, strlen(raw_string), bytes);
-    char * hash = malloc(65);
+    char * hash = malloc(MAX_PIHOLE_API_KEY + 1);
     int i;
     for(i = 0; i < SHA256_DIGEST_LENGTH; i++) {
         sprintf(hash + (i * 2), "%02x", bytes[i]);
     }
-    hash[64] = '\0';
+    hash[MAX_PIHOLE_API_KEY] = '\0';
     return hash;
 }
 
@@ -76,22 +79,21 @@ pihole_config * read_config(char * config_path) {
         return NULL;
     }
 
-    pihole_config * config = calloc(1, sizeof(pihole_config));
     FILE * config_file = fopen(config_path, "r");
-    char host[_POSIX_HOST_NAME_MAX + 7];
+    char * host = calloc(1, _POSIX_HOST_NAME_MAX + 7);
     fgets(host, _POSIX_HOST_NAME_MAX + 7, config_file);
     if (strstr(host, "host=") == NULL || strlen(host) < 7) {
         write_log(PIHELPER_LOG_DEBUG, "Config file contains invalid host: %s", host);
         write_log(PIHELPER_LOG_ERROR, "Invalid config file");
-        free_config(config);
         fclose(config_file);
         return NULL;
     }
-    config->host = calloc(1, strlen(host) - 5);
-    strncpy(config->host, host + 5, strlen(host) - 6);
-    config->host[strlen(host) - 6] = '\0';
+    pihole_config * config = pihole_config_new();
+    config_set_host(config, host + 5);
+    free(host);
     char * api_key = calloc(1, 74);
     fgets(api_key, 74, config_file);
+    fclose(config_file);
     if (strstr(api_key, "api-key=") == NULL
             || strlen(api_key) < 9) {
         write_log(PIHELPER_LOG_DEBUG, "Config file contains invalid api key: %s", api_key);
@@ -100,43 +102,62 @@ pihole_config * read_config(char * config_path) {
         fclose(config_file);
         return config;
     }
-    config->api_key = calloc(1, strlen(api_key) - 8);
-    strncpy(config->api_key, api_key + 8, strlen(api_key) - 9);
-    config->api_key[strlen(api_key) - 9] = '\0';
+    config_set_api_key(config, api_key + 8);
     free(api_key);
-    fclose(config_file);
     write_log(PIHELPER_LOG_DEBUG, "Using host %s and api key %s", config->host, config->api_key);
     return config;
 }
 
-pihole_config * configure_pihole(char * config_path) {
-    if (access(config_path, F_OK) == 0) {
-        // TODO: Check if file is accessible for read/write (not just if it exists)
-        write_log(PIHELPER_LOG_WARN, "WARNING: The config file already exists. Continuing will overwrite any existing configuration.\n");
+pihole_config * pihole_config_new() {
+    pihole_config * config;
+    if ((config = malloc(sizeof(pihole_config))) == NULL) {
+        write_log(PIHELPER_LOG_ERROR, "Failed to allocate memory for config");
+        free_config(config);
+        return NULL;
     }
-    pihole_config * config = malloc(sizeof(pihole_config));
-    config->host = calloc(1, _POSIX_HOST_NAME_MAX);
-    config->host[_POSIX_HOST_NAME_MAX - 1] = '\0';
-    // Intentionally using printf to ensure this is always printed
-    printf("Enter the hostname or ip address for your pi-hole: ");
-    fgets(config->host, _POSIX_HOST_NAME_MAX, stdin);
-    char * newline = strstr(config->host, "\n");
-    if (newline != NULL) {
-        config->host[strlen(config->host) - strlen(newline)] = '\0';
+    if ((config->host = calloc(1, _POSIX_HOST_NAME_MAX + 1)) == NULL) {
+        write_log(PIHELPER_LOG_ERROR, "Failed to allocate memory for config host");
+        free_config(config);
+        return NULL;
     }
-    config->api_key = getpass("Enter the api key or web password for your pi-hole: ");
-    if (strlen(config->api_key) != 64) {
-        // This is definitely not an API key, so hash it
-        // The Pi-hole hashes twice so we do the same here
-        char * first = hash_string(config->api_key);
-        char * hash = hash_string(first);
-        free(first);
-        free(config->api_key);
-        config->api_key = hash;
+    if ((config->api_key = calloc(1, MAX_PIHOLE_API_KEY + 1)) == NULL) {
+        write_log(PIHELPER_LOG_ERROR, "Failed to allocate memory for config API key");
+        free_config(config);
+        return NULL;
     }
-    // TODO: Make an authenticated request to verify that the credentials are valid and save the config
-    save_config(config, config_path);
+    config->host[_POSIX_HOST_NAME_MAX] = '\0';
+    config->api_key[MAX_PIHOLE_API_KEY] = '\0';
     return config;
+}
+
+void config_set_host(pihole_config * config, char * host) {
+    strncpy(config->host, host, _POSIX_HOST_NAME_MAX);
+    config->host[_POSIX_HOST_NAME_MAX] = '\0';
+    trim_string(config->host);
+}
+
+void config_set_password(pihole_config * config, char * password) {
+    trim_string(password);
+    // This is definitely not an API key, so hash it
+    // The Pi-hole hashes twice so we do the same here
+    char * first = hash_string(password);
+    char * hash = hash_string(first);
+    free(first);
+    config_set_api_key(config, hash);
+    free(hash);
+}
+
+void config_set_api_key(pihole_config * config, char * api_key) {
+    strncpy(config->api_key, api_key, MAX_PIHOLE_API_KEY);
+    config->api_key[MAX_PIHOLE_API_KEY] = '\0';
+    trim_string(config->api_key);
+}
+
+static void trim_string(char * raw_str) {
+    char * newline = strstr(raw_str, "\n");
+    if (newline != NULL) {
+        raw_str[strlen(raw_str) - strlen(newline)] = '\0';
+    }
 }
 
 void free_config(pihole_config * config) {

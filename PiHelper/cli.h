@@ -17,6 +17,7 @@
  * along with PiHelper.  If not, see <https://www.gnu.org/licenses/>.
  */
 #include <getopt.h>
+#include "pihelper.h"
 
 static char * shortopts = "cd::ef:hqv";
 
@@ -31,4 +32,6 @@ static struct option longopts[] = {
 };
 
 void print_usage();
+
+pihole_config * configure_pihole(char * config_path);
 

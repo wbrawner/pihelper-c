@@ -20,20 +20,22 @@
 #define PIHELPER_CONFIG
 #include <openssl/sha.h>
 #include "log.h"
+#include "pihelper.h"
 
-static char * DEFAULT_CONFIG_PATH = "/.config/pihelper.conf";
-
-typedef struct {
-    char * host;
-    char * api_key;
-} pihole_config;
-
-void save_config(pihole_config * config, char * config_path);
+int save_config(pihole_config * config, char * config_path);
 
 pihole_config * read_config(char * config_path);
 
-pihole_config * configure_pihole(char * config_path);
+pihole_config * pihole_config_new();
+
+void config_set_host(pihole_config * config, char * host);
+
+void config_set_password(pihole_config * config, char * password);
+
+void config_set_api_key(pihole_config * config, char * api_key);
 
 void free_config(pihole_config * config);
+
+static void trim_string(char * raw_str);
 #endif
 
