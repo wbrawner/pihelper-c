@@ -36,9 +36,23 @@ Once you have the dependencies installed, you can build the project with cmake:
     cmake ..
     make
 
-If you'd like to install pihelper to your system, run the following after building:
+By default, this will build a static library you can link to. If you'd like to build a shared library, use
+this cmake command instead:
 
-    sudo make install # This is optional, and only needed if you want to install command line utility
+    cmake -DPIHELPER_SHARED=BOOL:ON ..
+
+If you'd like to have the command line tool as well, you can use this:
+
+    cmake -DPIHELPER_EXECUTABLE=BOOL:ON ..
+
+If you need the development headers on your system, you can run this:
+
+    cmake -DPIHELPER_DEV=BOOL:ON ..
+
+Once you've run cmake with the desired options, you can install pihelper to your system by runnning the
+following after building:
+
+    sudo make install
 
 ## License
 
