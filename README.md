@@ -23,10 +23,11 @@ PiHelper depends on cmake, curl, openssl, and json-c. On Fedora you can install 
 following command:
 
     sudo dnf install cmake \
+        make \
         gcc \
         gcc-c++ \
         libcurl-devel \
-        openssl-curl \
+        openssl-devel \
         json-c-devel
 
 Once you have the dependencies installed, you can build the project with cmake:
