@@ -15,14 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with PiHelper.  If not, see <https://www.gnu.org/licenses/>.
 
-cmake_minimum_required (VERSION 3.15.5)
-
-set(PIHELPER_VERSION 0.1.0)
+cmake_minimum_required (VERSION 3.10.2)
 
 project(
     pihelper
-    VERSION ${PIHELPER_VERSION}
+    VERSION 0.1.0
+    LANGUAGES C
     )
 
-add_subdirectory(PiHelper)
+add_subdirectory(src)
 
