@@ -54,7 +54,7 @@ void pihelper_config_set_api_key(pihole_config * config, char * api_key) {
 }
 
 pihole_config * pihelper_read_config(char * config_path) {
-    read_config(config_path);
+    return read_config(config_path);
 }
 
 int pihelper_save_config(pihole_config * config, char * config_path) {
