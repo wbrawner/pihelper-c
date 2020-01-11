@@ -25,41 +25,45 @@ set(PIHELPER_SOURCES
     )
 
 include_directories(/usr/local/include)
-find_library (
-    CURL
-    NAMES curl libcurl
-    HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
-    )
-find_library (
-    JSONC
-    NAMES json-c libjson-c
-    HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
-    )
-find_library (
-    CRYPTO
-    NAMES crypto libcrypto
-    HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
-    )
-find_library (
-    OPENSSL
-    NAMES ssl libssl
-    HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
-    )
-
-if (NOT CURL)
-    message(SEND_ERROR "Did not find curl")
+if (NOT TARGET CURL)
+    find_library(
+        CURL
+        NAMES curl libcurl
+        HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
+        )
+    if (NOT CURL)
+        message(SEND_ERROR "Did not find curl")
+    endif()
 endif()
-
-if (NOT JSONC)
-    message(SEND_ERROR "Did not find json-c")
+if (NOT TARGET JSONC)
+    find_library(
+        JSONC
+        NAMES json-c libjson-c
+        HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
+        )
+    if (NOT JSONC)
+        message(SEND_ERROR "Did not find json-c")
+    endif()
 endif()
-
-if (NOT CRYPTO)
-    message(SEND_ERROR "Did not find OpenSSL")
+if (NOT TARGET CRYPTO)
+    find_library(
+        CRYPTO
+        NAMES crypto libcrypto
+        HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
+        )
+    if (NOT CRYPTO)
+        message(SEND_ERROR "Did not find OpenSSL")
+    endif()
 endif()
-
-if (NOT OPENSSL)
-    message(SEND_ERROR "Did not find OpenSSL")
+if (NOT TARGET OPENSSL)
+    find_library(
+        OPENSSL
+        NAMES ssl libssl
+        HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
+        )
+    if (NOT OPENSSL)
+        message(SEND_ERROR "Did not find OpenSSL")
+    endif()
 endif()
 
 option(PIHELPER_STATIC "Build Pi-Helper as a static library" ON)
@@ -85,7 +89,7 @@ if (PIHELPER_STATIC)
         )
 
     install(TARGETS libpihelperstatic
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         )
 endif()
 
@@ -131,7 +135,7 @@ if (PIHELPER_EXECUTABLE)
         )
 
     install(TARGETS pihelper
-        RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         )
 endif()
 
