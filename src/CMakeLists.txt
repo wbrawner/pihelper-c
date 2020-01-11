@@ -66,24 +66,26 @@ option(PIHELPER_STATIC "Build Pi-Helper as a static library" ON)
 option(PIHELPER_SHARED "Build Pi-Helper as a shared library" OFF)
 option(PIHELPER_EXECUTABLE "Build Pi-Helper as an executable" OFF)
 option(PIHELPER_DEV "Install Pi-Helper header files for development" OFF)
+option(PIHELPER_RPM "Apply custom config for building RPM packages" OFF)
 
 if (PIHELPER_STATIC)
     add_library(libpihelperstatic STATIC
         ${PIHELPER_SOURCES}
         )
 
-    set_target_properties(libpihelperstatic PROPERTIES OUTPUT_NAME "pihelper")
-    set_target_properties(libpihelperstatic PROPERTIES VERSION ${PROJECT_VERSION})
-    set_target_properties(libpihelperstatic PROPERTIES PUBLIC_HEADER pihelper.h)
+    set_target_properties(libpihelperstatic PROPERTIES OUTPUT_NAME "pihelper"
+        VERSION ${PROJECT_VERSION}
+        PUBLIC_HEADER pihelper.h
+        )
 
-    target_link_libraries(libpihelperstatic ${CURL})
-    target_link_libraries(libpihelperstatic ${JSONC})
-    target_link_libraries(libpihelperstatic ${CRYPTO})
-    target_link_libraries(libpihelperstatic ${OPENSSL})
+    target_link_libraries(libpihelperstatic ${CURL}
+        ${JSONC}
+        ${CRYPTO}
+        ${OPENSSL}
+        )
 
     install(TARGETS libpihelperstatic
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         )
 endif()
 
@@ -92,41 +94,41 @@ if (PIHELPER_SHARED OR PIHELPER_EXECUTABLE)
         ${PIHELPER_SOURCES}
         )
 
-    set_target_properties(libpihelpershared PROPERTIES OUTPUT_NAME "pihelper")
-    set_target_properties(libpihelpershared PROPERTIES VERSION ${PROJECT_VERSION})
-    set_target_properties(libpihelpershared PROPERTIES SOVERSION ${PROJECT_VERSION_MAJOR})
-    set_target_properties(libpihelpershared PROPERTIES PUBLIC_HEADER pihelper.h)
-
-    target_link_libraries(libpihelpershared ${CURL})
-    target_link_libraries(libpihelpershared ${JSONC})
-    target_link_libraries(libpihelpershared ${CRYPTO})
-    target_link_libraries(libpihelpershared ${OPENSSL})
-
-    install(TARGETS libpihelpershared
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    set_target_properties(libpihelpershared PROPERTIES
+        OUTPUT_NAME "pihelper"
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
         )
-endif()
+    message("shared major version: ${PROJECT_VERSION_MAJOR}")
+    if (PIHELPER_DEV)
+        set_target_properties(libpihelpershared PROPERTIES PUBLIC_HEADER pihelper.h)
+    endif()
 
-if (PIHELPER_DEV)
-    install(FILES PiHelper/pihelper.h DESTINATION "${CMAKE_INSTALL_FULL_INCLUDEDIR}/pihelper")
+    target_link_libraries(libpihelpershared ${CURL}
+        ${JSONC}
+        ${CRYPTO}
+        ${OPENSSL}
+        )
+
+    install(TARGETS libpihelpershared)
 endif()
 
 if (PIHELPER_EXECUTABLE)
-    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-    set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+    if (NOT PIHELPER_RPM)
+        set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+        set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_RPATH};${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+    endif()
 
     add_executable(pihelper
         cli.c
         )
 
-    message("Setting RPATH to ${CMAKE_INSTALL_RPATH}")
-
-    target_link_libraries(pihelper libpihelpershared)
-    target_link_libraries(pihelper ${CURL})
-    target_link_libraries(pihelper ${JSONC})
-    target_link_libraries(pihelper ${CRYPTO})
-    target_link_libraries(pihelper ${OPENSSL})
+    target_link_libraries(pihelper libpihelpershared
+        ${CURL}
+        ${JSONC}
+        ${CRYPTO}
+        ${OPENSSL}
+        )
 
     install(TARGETS pihelper
         RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}
