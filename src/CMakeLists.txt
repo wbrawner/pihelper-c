@@ -114,7 +114,9 @@ if (PIHELPER_SHARED OR PIHELPER_EXECUTABLE)
         ${OPENSSL}
         )
 
-    install(TARGETS libpihelpershared)
+    install(TARGETS libpihelpershared
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        )
 endif()
 
 if (PIHELPER_EXECUTABLE)
