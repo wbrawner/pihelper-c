@@ -154,7 +154,7 @@ static int parse_status(char * raw_json) {
     write_log(PIHELPER_LOG_DEBUG, "%s", json_object_to_json_string_ext(jobj, JSON_C_TO_STRING_PRETTY));
     json_object *status;
     const char * status_string;
-    if (json_object_object_get_ex(jobj, "/status", &status) == 0
+    if (json_object_object_get_ex(jobj, "status", &status) == 1
             && (status_string = json_object_get_string(status)) != NULL) {
         if (strstr(status_string, "enabled") == status_string) {
             retval = PIHELPER_ENABLED;
