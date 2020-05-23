@@ -24,7 +24,7 @@ set(PIHELPER_SOURCES
     config.c
     )
 
-include_directories(/usr/local/include)
+include_directories(/usr/local/include ${CMAKE_INCLUDE_PATH})
 if (NOT TARGET CURL)
     find_library(
         CURL
