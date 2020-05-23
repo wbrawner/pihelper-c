@@ -29,7 +29,7 @@ if (NOT TARGET CURL)
     find_library(
         CURL
         NAMES curl libcurl
-        HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
+        PATHS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64 /lib
         )
     if (NOT CURL)
         message(SEND_ERROR "Did not find curl")
@@ -39,7 +39,7 @@ if (NOT TARGET JSONC)
     find_library(
         JSONC
         NAMES json-c libjson-c
-        HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
+        PATHS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64 /lib
         )
     if (NOT JSONC)
         message(SEND_ERROR "Did not find json-c")
@@ -49,7 +49,7 @@ if (NOT TARGET CRYPTO)
     find_library(
         CRYPTO
         NAMES crypto libcrypto
-        HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
+        PATHS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64 /lib
         )
     if (NOT CRYPTO)
         message(SEND_ERROR "Did not find OpenSSL")
@@ -59,7 +59,7 @@ if (NOT TARGET OPENSSL)
     find_library(
         OPENSSL
         NAMES ssl libssl
-        HINTS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64
+        PATHS /usr/local/lib /usr/local/lib64 /usr/lib /usr/lib64 /lib
         )
     if (NOT OPENSSL)
         message(SEND_ERROR "Did not find OpenSSL")
@@ -79,8 +79,10 @@ if (PIHELPER_STATIC)
 
     set_target_properties(libpihelperstatic PROPERTIES OUTPUT_NAME "pihelper"
         VERSION ${PROJECT_VERSION}
-        PUBLIC_HEADER pihelper.h
         )
+    if (PIHELPER_DEV)
+        set_target_properties(libpihelperstatic PROPERTIES PUBLIC_HEADER pihelper.h)
+    endif()
 
     target_link_libraries(libpihelperstatic ${CURL}
         ${JSONC}
