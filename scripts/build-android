@@ -159,7 +159,7 @@ package() {
     for ARCH in $ANDROID_ARCHS; do
         (
         export ABI="$(get_abi $ARCH)"
-        cd android
+        cd $BUILD_DIR/android
         cp -r $ARCH/include .
         mv $ARCH/lib/*.a $ARCH/lib/*.la $ARCH/
         rm -rf $ARCH/{bin,lib,include,share}
