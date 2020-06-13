@@ -17,10 +17,21 @@ PiHelper is designed to be a simple, lightweight, portable client library for th
 
 Include the `pihelper.h` file.
 
-## Building
+## Dependencies
 
-PiHelper depends on cmake, curl, openssl, and json-c. On Fedora you can install the dependencies with the
-following command:
+PiHelper depends on cmake, curl, openssl, and json-c.
+
+### Ubuntu Install Command
+
+    sudo apt install cmake \
+        make \
+        gcc \
+        g++ \
+        libcurl4-openssl-dev \
+        libssl-dev \
+        libjson-c-dev
+
+### Fedora Install Command
 
     sudo dnf install cmake \
         make \
@@ -29,6 +40,8 @@ following command:
         libcurl-devel \
         openssl-devel \
         json-c-devel
+
+## Building
 
 Once you have the dependencies installed, you can build the project with cmake:
 
