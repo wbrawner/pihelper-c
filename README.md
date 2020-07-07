@@ -41,6 +41,13 @@ PiHelper depends on cmake, curl, openssl, and json-c.
         openssl-devel \
         json-c-devel
 
+### MacOS Install Command
+
+    brew install cmake \
+        autoconf \
+        automake \
+        libtool
+
 ## Building
 
 Once you have the dependencies installed, you can build the project with cmake:

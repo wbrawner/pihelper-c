@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+
+# Configure the following variables according to your needs
+
+VARIANT="Simulator"
+#VARIANT="OS"
+OPENSSL_TAG_VERSION="OpenSSL_1_1_1g "
+CURL_TAG_VERSION="master "
+JSONC_TAG_VERSION="master"
+
+# Edit below at your own risk
+
+XCODE_ROOT="/Applications/Xcode.app/Contents/Developer/Platforms"
+PLATFORM="${XCODE_ROOT}/iPhone${VARIANT}.platform"
+SDK="${PLATFORM}/Developer/SDKs/iPhone${VARIANT}.sdk"
+
+get_toolchain() {
+    cd deps
+    test -d ios-cmake || git clone https://github.com/cristeab/ios-cmake.git
+}
+
+make_openssl() {
+    cd deps
+    test -d openssl || git clone --branch $OPENSSL_TAG_VERSION https://github.com/openssl/openssl.git
+    for ARCH in $ANDROID_ARCHS; do
+        (
+        export PREFIX="$BUILD_DIR/ios/$VARIANT"
+        mkdir -p "$PREFIX"
+        cd openssl
+        git checkout $OPENSSL_TAG_VERSION
+        make clean
+        export ANDROID_NDK_HOME=$NDK
+        export ANDROID_NDK_ROOT=$NDK
+        export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$ANDROID_NDK_HOME/toolchains/arm-linux-androideabi-4.9/prebuilt/linux-x86_64/bin:$PATH
+        ./Configure \
+            --prefix="$PREFIX" \
+            -D__ANDROID_API__=$TARGET_SDK_VERSION \
+            no-shared \
+            android-$ARCH
+        make install_dev
+        )
+    done
+}
+
+make_curl() {
+    cd deps
+    test -d curl || git clone --branch $CURL_TAG_VERSION https://github.com/curl/curl.git
+    for ARCH in $ANDROID_ARCHS; do
+        (
+        export PREFIX="$BUILD_DIR/ios/$VARIANT"
+        mkdir -p "$PREFIX"
+        cd curl
+        git checkout $CURL_TAG_VERSION
+        test -f configure || ./buildconf
+        export HOST_TAG=linux-x86_64
+        export TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/$HOST_TAG
+        case $ARCH in
+            "arm")
+                export CURL_ARCH="arm-linux-androideabi"
+                export CLANG="armv7a-linux-androideabi"
+                ;;
+            "arm64")
+                export CURL_ARCH="aarch64-linux-android"
+                export CLANG=$CURL_ARCH
+                ;;
+            "x86")
+                export CURL_ARCH="i686-linux-android"
+                export CLANG=$CURL_ARCH
+                ;;
+            "x86_64")
+                export CURL_ARCH="x86_64-linux-android"
+                export CLANG=$CURL_ARCH
+                ;;
+        esac
+        export     AR=$TOOLCHAIN/bin/$CURL_ARCH-ar
+        export     AS=$TOOLCHAIN/bin/$CURL_ARCH-as
+        export     CC=$TOOLCHAIN/bin/${CLANG}${MIN_SDK_VERSION}-clang
+        export    CXX=$TOOLCHAIN/bin/${CLANG}${MIN_SDK_VERSION}-clang++
+        export     LD=$TOOLCHAIN/bin/$CURL_ARCH-ld
+        export RANLIB=$TOOLCHAIN/bin/$CURL_ARCH-ranlib
+        export  STRIP=$TOOLCHAIN/bin/$CURL_ARCH-strip
+        make clean
+        ./configure --prefix="$PREFIX" \
+            --host $CURL_ARCH \
+            --with-pic \
+            --disable-shared \
+            --with-ssl="$PREFIX"
+        make install
+        )
+    done
+}
+
+make_jsonc() {
+    cd deps
+    test -d json-c || git clone --branch $JSONC_TAG_VERSION https://github.com/json-c/json-c.git
+    (
+        export PREFIX="$BUILD_DIR/android/$ARCH"
+        mkdir -p "$PREFIX"
+        cd json-c
+        git checkout $JSONC_TAG_VERSION
+        mkdir $VARIANT
+        pushd $VARIANT
+        cmake .. \
+    	-DPIHELPER_DEV=ON \
+    	-DCMAKE_IOS_DEVELOPER_ROOT=$PLATFORM \
+    	-DIOS_SDK_ROOT=$SDK \
+    	-DCMAKE_TOOLCHAIN_FILE=../ios-cmake/toolchain/iOS.cmake
+    )
+    for ARCH in $ANDROID_ARCHS; do
+        (
+        export PREFIX="$BUILD_DIR/android/$ARCH"
+        mkdir -p "$PREFIX"
+        cd json-c
+        git checkout $JSONC_TAG_VERSION
+        test -d $ARCH && rm -rf $ARCH
+        mkdir $ARCH
+        pushd $ARCH
+        export ABI="$(get_abi $ARCH)"
+        cmake \
+            -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=$ABI \
+            -DANDROID_NATIVE_API_LEVEL=$MIN_SDK_VERSION \
+            -DCMAKE_INSTALL_PREFIX=$PREFIX \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DBUILD_STATIC_LIBS=ON \
+            ..
+            make
+            make install
+        )
+    done
+}
+
+make_pihelper() {
+    cmake .. \
+	-DPIHELPER_DEV=ON \
+	-DCMAKE_IOS_DEVELOPER_ROOT=$PLATFORM \
+	-DIOS_SDK_ROOT=$SDK \
+	-DCMAKE_TOOLCHAIN_FILE=../deps/ios-cmake/toolchain/iOS.cmake
+    for ARCH in $ANDROID_ARCHS; do
+        (
+        export PREFIX="$BUILD_DIR/android/$ARCH"
+        mkdir -p "$PREFIX"
+        cd "$BUILD_DIR"
+        test -d $ARCH && rm -rf $ARCH
+        mkdir $ARCH
+        pushd $ARCH
+        cmake \
+            -DCMAKE_FIND_ROOT_PATH=$PREFIX \
+            -DCMAKE_INCLUDE_PATH=$PREFIX/include \
+            -DCMAKE_PREFIX_PATH=$PREFIX \
+            -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=$ABI \
+            -DANDROID_NATIVE_API_LEVEL=$MIN_SDK_VERSION \
+            -DCMAKE_INSTALL_PREFIX=$PREFIX \
+            -DPIHELPER_SHARED=OFF \
+            -DPIHELPER_STATIC=ON \
+            -DPIHELPER_DEV=ON \
+            ../..
+            make
+            make install
+        )
+    done
+}
+
+package() {
+    for ARCH in $ANDROID_ARCHS; do
+        (
+        export ABI="$(get_abi $ARCH)"
+        cd $BUILD_DIR/android
+        cp -r $ARCH/include .
+        mv $ARCH/lib/*.a $ARCH/lib/*.la $ARCH/
+        rm -rf $ARCH/{bin,lib,include,share}
+        if [ "$ARCH" != "$ABI" ]; then
+            mv $ARCH $ABI
+        fi
+        )
+    done
+}
+
+(
+if [ "$(dirname $0)" == "." ]; then
+    cd ..
+fi
+test -d deps || mkdir deps
+export BUILD_DIR="$PWD/build"
+test -d "$BUILD_DIR" || mkdir -p "$BUILD_DIR"
+get_toolchain
+#make_curl
+make_jsonc
+#make_pihelper
+package
+)
+
