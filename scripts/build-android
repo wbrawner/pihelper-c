@@ -4,7 +4,7 @@
 
 NDK_VERSION="21.1.6352462"
 OPENSSL_TAG_VERSION="OpenSSL_1_1_1g "
-CURL_TAG_VERSION="master "
+CURL_TAG_VERSION="curl-7_78_0"
 JSONC_TAG_VERSION="master"
 ANDROID_ARCHS="arm arm64 x86 x86_64"
 NDK=$HOME/Android/Sdk/ndk/$NDK_VERSION
@@ -31,7 +31,6 @@ get_abi() {
 }
 
 make_openssl() {
-    cd deps
     test -d openssl || git clone --branch $OPENSSL_TAG_VERSION https://github.com/openssl/openssl.git
     for ARCH in $ANDROID_ARCHS; do
         (
@@ -48,13 +47,12 @@ make_openssl() {
             -D__ANDROID_API__=$TARGET_SDK_VERSION \
             no-shared \
             android-$ARCH
-        make install_dev
+        make -j24 install_dev
         )
     done
 }
 
 make_curl() {
-    cd deps
     test -d curl || git clone --branch $CURL_TAG_VERSION https://github.com/curl/curl.git
     for ARCH in $ANDROID_ARCHS; do
         (
@@ -62,7 +60,7 @@ make_curl() {
         mkdir -p "$PREFIX"
         cd curl
         git checkout $CURL_TAG_VERSION
-        test -f configure || ./buildconf
+        test -f configure || autoreconf -fi
         export HOST_TAG=linux-x86_64
         export TOOLCHAIN=$NDK/toolchains/llvm/prebuilt/$HOST_TAG
         case $ARCH in
@@ -96,13 +94,12 @@ make_curl() {
             --with-pic \
             --disable-shared \
             --with-ssl="$PREFIX"
-        make install
+        make -j24 install
         )
     done
 }
 
 make_jsonc() {
-    cd deps
     test -d json-c || git clone --branch $JSONC_TAG_VERSION https://github.com/json-c/json-c.git
     for ARCH in $ANDROID_ARCHS; do
         (
@@ -122,7 +119,7 @@ make_jsonc() {
             -DBUILD_SHARED_LIBS=OFF \
             -DBUILD_STATIC_LIBS=ON \
             ..
-            make
+            make -j24
             make install
         )
     done
@@ -149,7 +146,7 @@ make_pihelper() {
             -DPIHELPER_STATIC=ON \
             -DPIHELPER_DEV=ON \
             ../..
-            make
+            make -j24
             make install
         )
     done
@@ -177,6 +174,7 @@ fi
 test -d deps || mkdir deps
 export BUILD_DIR="$PWD/build"
 test -d "$BUILD_DIR" || mkdir -p "$BUILD_DIR"
+cd deps
 make_openssl
 make_curl
 make_jsonc

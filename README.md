@@ -27,6 +27,8 @@ PiHelper depends on cmake, curl, openssl, and json-c.
         make \
         gcc \
         g++ \
+        autoconf \
+        libtool \
         libcurl4-openssl-dev \
         libssl-dev \
         libjson-c-dev
