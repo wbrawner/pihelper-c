@@ -1,5 +1,3 @@
-build/
-*.o
-tags
-*.swp
-deps/
+# Added by cargo
+
+/target
